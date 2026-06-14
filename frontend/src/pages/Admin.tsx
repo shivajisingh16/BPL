@@ -13,7 +13,12 @@ import type { Match, PlayoffMatch } from '../types';
 type Editing = { match: Match; ready: boolean };
 
 function resultText(m: Match): string {
-  if (m.status === 'completed') return `🏆 ${m.winner} · ${m.kills} K · ${m.headshots} HS`;
+  if (m.status === 'completed') {
+    const winnerKills = (m.winner === m.player1 ? m.player1Kills : m.player2Kills) ?? 0;
+    const winnerHeadshots =
+      (m.winner === m.player1 ? m.player1Headshots : m.player2Headshots) ?? 0;
+    return `🏆 ${m.winner} · ${winnerKills} K · ${winnerHeadshots} HS`;
+  }
   if (m.status === 'abandoned') return '⊘ Abandoned · 1 pt each';
   return '—';
 }

@@ -22,7 +22,8 @@ interface Aggregate {
  * Playoff matches never affect league standings, so they are excluded here.
  *
  * Scoring (IPL-style):
- *   - completed  → winner +2 pts, +1 win, +kills/+headshots; loser +1 loss
+ *   - completed  → winner +2 pts & +1 win, loser +1 loss; BOTH players accrue
+ *                  their own kills/headshots
  *   - abandoned  → both players +1 pt, +1 abandoned (counts as played, no W/L)
  *   - scheduled  → ignored
  */
@@ -59,6 +60,18 @@ export function aggregate(players: Player[], matches: Match[]): Aggregate[] {
 
     if (match.status !== 'completed' || !match.winner) continue;
 
+    // Both players accrue their own kills/headshots, regardless of the result.
+    const p1 = byName.get(match.player1);
+    if (p1) {
+      p1.kills += match.player1Kills ?? 0;
+      p1.headshots += match.player1Headshots ?? 0;
+    }
+    const p2 = byName.get(match.player2);
+    if (p2) {
+      p2.kills += match.player2Kills ?? 0;
+      p2.headshots += match.player2Headshots ?? 0;
+    }
+
     const winner = byName.get(match.winner);
     const loserName = match.winner === match.player1 ? match.player2 : match.player1;
     const loser = byName.get(loserName);
@@ -66,8 +79,6 @@ export function aggregate(players: Player[], matches: Match[]): Aggregate[] {
     if (winner) {
       winner.wins += 1;
       winner.played += 1;
-      winner.kills += match.kills ?? 0;
-      winner.headshots += match.headshots ?? 0;
       winner.points += POINTS.win;
     }
     if (loser) {

@@ -25,8 +25,9 @@ export default function Leaderboard() {
         <>
           <LeaderboardTable rows={data} />
           <GlassCard className="mt-6 p-4 text-sm text-slate-400">
-            <span className="font-semibold text-slate-300">Tie-break order:</span> Wins → Total Kills
-            → Headshots. Kills &amp; headshots from each completed match are credited to its winner.
+            <span className="font-semibold text-slate-300">Tie-break order:</span> Points → Total
+            Kills → Headshots. Each completed match records kills &amp; headshots for both players,
+            credited to their own totals.
           </GlassCard>
         </>
       )}

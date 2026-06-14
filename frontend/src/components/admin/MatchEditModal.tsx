@@ -19,8 +19,10 @@ export function MatchEditModal({ match, ready = true, onClose, onSaved }: MatchE
 
   const [status, setStatus] = useState<MatchStatus>(match.status);
   const [winner, setWinner] = useState<string>(match.winner ?? '');
-  const [kills, setKills] = useState<string>(match.kills?.toString() ?? '0');
-  const [headshots, setHeadshots] = useState<string>(match.headshots?.toString() ?? '0');
+  const [p1Kills, setP1Kills] = useState<string>(match.player1Kills?.toString() ?? '0');
+  const [p1Headshots, setP1Headshots] = useState<string>(match.player1Headshots?.toString() ?? '0');
+  const [p2Kills, setP2Kills] = useState<string>(match.player2Kills?.toString() ?? '0');
+  const [p2Headshots, setP2Headshots] = useState<string>(match.player2Headshots?.toString() ?? '0');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +48,14 @@ export function MatchEditModal({ match, ready = true, onClose, onSaved }: MatchE
 
     let payload: UpdateMatchInput;
     if (status === 'completed') {
-      payload = { status, winner, kills: Number(kills) || 0, headshots: Number(headshots) || 0 };
+      payload = {
+        status,
+        winner,
+        player1Kills: Number(p1Kills) || 0,
+        player1Headshots: Number(p1Headshots) || 0,
+        player2Kills: Number(p2Kills) || 0,
+        player2Headshots: Number(p2Headshots) || 0,
+      };
     } else {
       payload = { status }; // scheduled or abandoned — no result fields
     }
@@ -139,35 +148,27 @@ export function MatchEditModal({ match, ready = true, onClose, onSaved }: MatchE
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label" htmlFor="kills">
-                    Kills
-                  </label>
-                  <input
-                    id="kills"
-                    type="number"
-                    min={0}
-                    className="input-field"
-                    value={kills}
-                    onChange={(e) => setKills(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="label" htmlFor="headshots">
-                    Headshots
-                  </label>
-                  <input
-                    id="headshots"
-                    type="number"
-                    min={0}
-                    className="input-field"
-                    value={headshots}
-                    onChange={(e) => setHeadshots(e.target.value)}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500">Headshots cannot exceed kills. Winner earns 2 points.</p>
+              {/* Per-player kills & headshots — recorded for BOTH players */}
+              <PlayerResultFields
+                name={match.player1}
+                kills={p1Kills}
+                headshots={p1Headshots}
+                onKills={setP1Kills}
+                onHeadshots={setP1Headshots}
+                idPrefix="p1"
+              />
+              <PlayerResultFields
+                name={match.player2}
+                kills={p2Kills}
+                headshots={p2Headshots}
+                onKills={setP2Kills}
+                onHeadshots={setP2Headshots}
+                idPrefix="p2"
+              />
+              <p className="text-xs text-slate-500">
+                Enter kills &amp; headshots for both players. Headshots cannot exceed kills. Winner
+                earns 2 points.
+              </p>
             </div>
           )}
 
@@ -199,6 +200,59 @@ export function MatchEditModal({ match, ready = true, onClose, onSaved }: MatchE
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/** Kills + headshots inputs for a single player. */
+function PlayerResultFields({
+  name,
+  kills,
+  headshots,
+  onKills,
+  onHeadshots,
+  idPrefix,
+}: {
+  name: string;
+  kills: string;
+  headshots: string;
+  onKills: (v: string) => void;
+  onHeadshots: (v: string) => void;
+  idPrefix: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="mb-2 truncate font-display text-sm font-semibold text-slate-200" title={name}>
+        {name}
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label" htmlFor={`${idPrefix}-kills`}>
+            Kills
+          </label>
+          <input
+            id={`${idPrefix}-kills`}
+            type="number"
+            min={0}
+            className="input-field"
+            value={kills}
+            onChange={(e) => onKills(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor={`${idPrefix}-headshots`}>
+            Headshots
+          </label>
+          <input
+            id={`${idPrefix}-headshots`}
+            type="number"
+            min={0}
+            className="input-field"
+            value={headshots}
+            onChange={(e) => onHeadshots(e.target.value)}
+          />
+        </div>
       </div>
     </div>
   );

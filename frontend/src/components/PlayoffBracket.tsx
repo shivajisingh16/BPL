@@ -46,6 +46,8 @@ function PlayoffCard({ match }: { match: PlayoffMatch }) {
   const completed = match.status === 'completed';
   const p1Win = completed && match.winner === match.player1;
   const p2Win = completed && match.winner === match.player2;
+  const winnerKills = (p1Win ? match.player1Kills : match.player2Kills) ?? 0;
+  const winnerHeadshots = (p1Win ? match.player1Headshots : match.player2Headshots) ?? 0;
   const isFinal = match.round === 'Final';
 
   return (
@@ -71,7 +73,7 @@ function PlayoffCard({ match }: { match: PlayoffMatch }) {
 
       {completed ? (
         <p className="mt-3 border-t border-white/10 pt-2 text-center text-xs text-slate-400">
-          🏆 <span className="text-neon-gold">{match.winner}</span> · {match.kills} K · {match.headshots} HS
+          🏆 <span className="text-neon-gold">{match.winner}</span> · {winnerKills} K · {winnerHeadshots} HS
         </p>
       ) : (
         <p className="mt-3 border-t border-white/10 pt-2 text-center text-[11px] text-slate-500">

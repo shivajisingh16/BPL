@@ -60,7 +60,7 @@ export default function Login() {
               type="email"
               autoComplete="username"
               className="input-field"
-              placeholder="name@bot.com"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -99,14 +99,6 @@ export default function Login() {
             )}
           </button>
         </form>
-
-        <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center text-xs text-slate-500">
-          <p className="mb-1 font-semibold uppercase tracking-wider text-slate-400">Admin access</p>
-          Players sign in with <span className="text-neon-cyan">firstname@bot.com</span>
-          <br />
-          Super-admin <span className="text-neon-cyan">admin@bot.com</span> · password{' '}
-          <span className="text-neon-gold">admin</span>
-        </div>
       </GlassCard>
     </div>
   );

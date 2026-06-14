@@ -21,8 +21,10 @@ export interface Match {
   player2: string;
   status: MatchStatus;
   winner?: string;
-  kills?: number;
-  headshots?: number;
+  player1Kills?: number;
+  player1Headshots?: number;
+  player2Kills?: number;
+  player2Headshots?: number;
 }
 
 /** A playoff fixture with its bracket metadata resolved by the backend. */
@@ -82,8 +84,10 @@ export interface TournamentSummary {
 export interface UpdateMatchInput {
   status: MatchStatus;
   winner?: string | null;
-  kills?: number | null;
-  headshots?: number | null;
+  player1Kills?: number | null;
+  player1Headshots?: number | null;
+  player2Kills?: number | null;
+  player2Headshots?: number | null;
 }
 
 export interface AuthUser {

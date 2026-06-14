@@ -41,10 +41,20 @@ export function MatchCard({ match }: { match: Match }) {
       </div>
 
       {completed ? (
-        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-center">
-          <Metric label="Winner" value={match.winner ?? '—'} highlight />
-          <Metric label="Kills" value={match.kills ?? 0} />
-          <Metric label="Headshots" value={match.headshots ?? 0} />
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-3">
+          <PlayerResult
+            name={match.player1}
+            kills={match.player1Kills ?? 0}
+            headshots={match.player1Headshots ?? 0}
+            won={p1Won}
+          />
+          <PlayerResult
+            name={match.player2}
+            kills={match.player2Kills ?? 0}
+            headshots={match.player2Headshots ?? 0}
+            won={p2Won}
+            align="right"
+          />
         </div>
       ) : match.status === 'abandoned' ? (
         <div className="mt-4 border-t border-white/10 pt-3 text-center">
@@ -63,20 +73,33 @@ export function MatchCard({ match }: { match: Match }) {
   );
 }
 
-function Metric({
-  label,
-  value,
-  highlight = false,
+function PlayerResult({
+  name,
+  kills,
+  headshots,
+  won,
+  align = 'left',
 }: {
-  label: string;
-  value: string | number;
-  highlight?: boolean;
+  name: string;
+  kills: number;
+  headshots: number;
+  won: boolean;
+  align?: 'left' | 'right';
 }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className={`mt-0.5 truncate font-display text-sm font-bold ${highlight ? 'text-neon-gold' : 'text-white'}`}>
-        {value}
+    <div className={`min-w-0 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <p
+        className={`truncate text-[10px] font-semibold uppercase tracking-wider ${
+          won ? 'text-neon-gold' : 'text-slate-500'
+        }`}
+        title={name}
+      >
+        {won && '👑 '}
+        {name}
+      </p>
+      <p className="mt-0.5 font-display text-sm font-bold text-white">
+        <span className="text-neon-purple">{kills}</span> K ·{' '}
+        <span className="text-neon-cyan">{headshots}</span> HS
       </p>
     </div>
   );

@@ -7,7 +7,7 @@
 
 /**
  * scheduled  — not played yet
- * completed  — has a winner; kills/headshots credited to the winner (2 pts)
+ * completed  — has a winner (2 pts); kills/headshots recorded for BOTH players
  * abandoned  — no result; both players get 1 point and a "played" credit
  */
 export type MatchStatus = 'scheduled' | 'completed' | 'abandoned';
@@ -24,8 +24,9 @@ export interface Player {
 /**
  * A single fixture between two players.
  *
- * `kills` and `headshots` describe the result of the match and are credited to
- * the `winner` when the stats engine recalculates player/leaderboard data.
+ * Kills and headshots are recorded per player (`player1*` / `player2*`) so both
+ * the winner's and the loser's performance are stored and credited to their
+ * respective totals by the stats engine.
  * League matches use `day`; playoff matches use `round` (and `day` is 0).
  */
 export interface Match {
@@ -37,8 +38,10 @@ export interface Match {
   player2: string;
   status: MatchStatus;
   winner?: string;
-  kills?: number;
-  headshots?: number;
+  player1Kills?: number;
+  player1Headshots?: number;
+  player2Kills?: number;
+  player2Headshots?: number;
 }
 
 /**
@@ -110,8 +113,10 @@ export interface TournamentSummary {
 export interface UpdateMatchInput {
   status: MatchStatus;
   winner?: string | null;
-  kills?: number | null;
-  headshots?: number | null;
+  player1Kills?: number | null;
+  player1Headshots?: number | null;
+  player2Kills?: number | null;
+  player2Headshots?: number | null;
 }
 
 export interface LoginInput {

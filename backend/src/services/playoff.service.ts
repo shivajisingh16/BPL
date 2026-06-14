@@ -71,8 +71,10 @@ export function buildPlayoffViews(matches: Match[], standings: LeaderboardRow[])
         player2: p2 ?? cfg.slot2.label,
         status,
         winner: stored?.winner,
-        kills: stored?.kills,
-        headshots: stored?.headshots,
+        player1Kills: stored?.player1Kills,
+        player1Headshots: stored?.player1Headshots,
+        player2Kills: stored?.player2Kills,
+        player2Headshots: stored?.player2Headshots,
         ready: p1 !== null && p2 !== null,
       };
     });

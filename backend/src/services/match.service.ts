@@ -18,17 +18,51 @@ function isNonNegativeInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
-function validateResult(kills: number, headshots: number): void {
+function validateResult(kills: number, headshots: number, who: string): void {
   if (!isNonNegativeInt(kills)) {
-    throw AppError.badRequest('kills must be a non-negative integer', 'INVALID_KILLS');
+    throw AppError.badRequest(`${who} kills must be a non-negative integer`, 'INVALID_KILLS');
   }
   if (!isNonNegativeInt(headshots)) {
-    throw AppError.badRequest('headshots must be a non-negative integer', 'INVALID_HEADSHOTS');
+    throw AppError.badRequest(
+      `${who} headshots must be a non-negative integer`,
+      'INVALID_HEADSHOTS',
+    );
   }
   if (headshots > kills) {
-    throw AppError.badRequest('headshots cannot exceed kills', 'HEADSHOTS_GT_KILLS');
+    throw AppError.badRequest(`${who} headshots cannot exceed kills`, 'HEADSHOTS_GT_KILLS');
   }
 }
+
+/** Per-player kills/headshots for both participants, validated. */
+interface MatchResult {
+  player1Kills: number;
+  player1Headshots: number;
+  player2Kills: number;
+  player2Headshots: number;
+}
+
+/**
+ * Reads, defaults and validates the per-player result from the input. Stats are
+ * recorded for BOTH players so winners and losers both accrue kills/headshots.
+ */
+function extractResult(input: UpdateMatchInput, player1: string, player2: string): MatchResult {
+  const player1Kills = input.player1Kills ?? 0;
+  const player1Headshots = input.player1Headshots ?? 0;
+  const player2Kills = input.player2Kills ?? 0;
+  const player2Headshots = input.player2Headshots ?? 0;
+  validateResult(player1Kills, player1Headshots, player1);
+  validateResult(player2Kills, player2Headshots, player2);
+  return { player1Kills, player1Headshots, player2Kills, player2Headshots };
+}
+
+/** Clears every result field — used when resetting a match to scheduled/abandoned. */
+const CLEARED_RESULT = {
+  winner: undefined,
+  player1Kills: undefined,
+  player1Headshots: undefined,
+  player2Kills: undefined,
+  player2Headshots: undefined,
+} as const;
 
 export const matchService = {
   /** League matches only, ordered by day then id. */
@@ -106,24 +140,12 @@ export const matchService = {
 
   async updateLeagueMatch(existing: Match, input: UpdateMatchInput): Promise<Match> {
     if (input.status === 'scheduled') {
-      return store.saveMatch({
-        ...existing,
-        status: 'scheduled',
-        winner: undefined,
-        kills: undefined,
-        headshots: undefined,
-      });
+      return store.saveMatch({ ...existing, status: 'scheduled', ...CLEARED_RESULT });
     }
 
     if (input.status === 'abandoned') {
       // No result — both players get 1 point via the stats engine.
-      return store.saveMatch({
-        ...existing,
-        status: 'abandoned',
-        winner: undefined,
-        kills: undefined,
-        headshots: undefined,
-      });
+      return store.saveMatch({ ...existing, status: 'abandoned', ...CLEARED_RESULT });
     }
 
     // completed
@@ -137,11 +159,9 @@ export const matchService = {
         'INVALID_WINNER',
       );
     }
-    const kills = input.kills ?? 0;
-    const headshots = input.headshots ?? 0;
-    validateResult(kills, headshots);
+    const result = extractResult(input, existing.player1, existing.player2);
 
-    return store.saveMatch({ ...existing, status: 'completed', winner, kills, headshots });
+    return store.saveMatch({ ...existing, status: 'completed', winner, ...result });
   },
 
   async updatePlayoffMatch(existing: Match, input: UpdateMatchInput): Promise<Match> {
@@ -157,9 +177,7 @@ export const matchService = {
         player1: view?.slot1Label ?? existing.player1,
         player2: view?.slot2Label ?? existing.player2,
         status: 'scheduled',
-        winner: undefined,
-        kills: undefined,
-        headshots: undefined,
+        ...CLEARED_RESULT,
       });
     }
 
@@ -183,9 +201,7 @@ export const matchService = {
         'INVALID_WINNER',
       );
     }
-    const kills = input.kills ?? 0;
-    const headshots = input.headshots ?? 0;
-    validateResult(kills, headshots);
+    const result = extractResult(input, player1, player2);
 
     // Snapshot the resolved participants alongside the result.
     return store.saveMatch({
@@ -194,8 +210,7 @@ export const matchService = {
       player2,
       status: 'completed',
       winner,
-      kills,
-      headshots,
+      ...result,
     });
   },
 
