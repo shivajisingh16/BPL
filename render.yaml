@@ -28,7 +28,18 @@ services:
       # Randomly generated session-token secret.
       - key: AUTH_TOKEN_SECRET
         generateValue: true
-      # Admin password (change in the Render dashboard if you like).
+      # Shared password for the player admin accounts (change in the dashboard).
       - key: AUTH_PASSWORD
         value: secret
+      # Dedicated super-admin account.
+      - key: ADMIN_EMAIL
+        value: admin@bot.com
+      - key: ADMIN_PASSWORD
+        value: admin
+      # MongoDB Atlas connection — set the real value in the Render dashboard
+      # (mark it as a Secret). Do NOT commit your connection string.
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: bpl
     # PORT is provided by Render automatically and read via process.env.PORT.

@@ -25,8 +25,9 @@ business logic is shared between the two.
 - **Leaderboard** — auto-ranked by **wins → total kills → headshots**.
 - **Admin panel** — update any match result; player stats and the leaderboard recalculate instantly,
   no page refresh.
-- **Auth** — any `name@bot.com` account with the password `secret`. Protected admin routes, token
-  persisted locally.
+- **Auth** — admin-only sign-in restricted to seeded accounts (no self-registration). Passwords are
+  bcrypt-hashed in MongoDB. Public pages stay open; only the admin panel and result writes require a
+  bearer token (persisted locally).
 - Dark-mode-by-default esports theme: glassmorphism cards, neon purple/cyan/gold accents, smooth
   animations, fully mobile-responsive. Loading & error states throughout.
 
@@ -38,9 +39,9 @@ business logic is shared between the two.
 freefire-ipl/
 ├── backend/            # Express + TypeScript API
 │   └── src/
-│       ├── config/        env loader
+│       ├── config/        env loader + MongoDB connection
 │       ├── controllers/   request handlers
-│       ├── data/          seed data + in-memory store (DB swap point)
+│       ├── data/          seed data + MongoDB store (DataStore interface)
 │       ├── middleware/     auth, error, 404
 │       ├── routes/        REST route definitions
 │       ├── services/      business logic (auth, match, player, leaderboard)
@@ -71,10 +72,14 @@ Open **two terminals** — one for each app.
 
 ```bash
 cd backend
-cp .env.example .env      # already provided; adjust if needed
+cp .env.example .env      # then paste your MongoDB Atlas URI into MONGODB_URI
 npm install
+npm run seed              # one-time: create collections + seed players/accounts
 npm run dev               # starts http://localhost:3001
 ```
+
+> A valid `MONGODB_URI` (set in `backend/.env`) is required. The database auto-seeds on first run
+> if it's empty.
 
 Verify it's up: <http://localhost:3001/api/health>
 
@@ -89,13 +94,6 @@ npm run dev               # starts http://localhost:5173
 
 Open <http://localhost:5173>.
 
-### 🔐 Admin login
-
-| Field    | Value                                            |
-| -------- | ------------------------------------------------ |
-| Email    | any `name@bot.com` (e.g. `saurav@bot.com`)       |
-| Password | `secret`                                         |
-
 ---
 
 ## 📜 npm scripts
@@ -107,7 +105,7 @@ Open <http://localhost:5173>.
 | `npm run dev`       | Run with hot-reload (`tsx watch`)            |
 | `npm run build`     | Compile TypeScript → `dist/`                 |
 | `npm start`         | Run the compiled production build            |
-| `npm run seed`      | (Re)seed the data file — resets all results  |
+| `npm run seed`      | (Re)seed the database — resets all results   |
 | `npm run typecheck` | Type-check without emitting                  |
 
 ### Frontend (`/frontend`)
@@ -188,76 +186,36 @@ cannot be abandoned.
 
 ---
 
-## ☁️ Deploy (free, one service)
+## 💾 Data persistence (MongoDB)
 
-The repo ships a [`render.yaml`](render.yaml) blueprint that deploys the **whole app as a single
-free web service** on [Render](https://render.com): the backend builds the React frontend and
-serves it alongside the API, so everything runs on **one URL** — no CORS, no separate frontend host,
-nothing to wire up.
+Data lives in **MongoDB**. The app uses three collections:
 
-**Steps**
+| Collection | Contents                                                        |
+| ---------- | --------------------------------------------------------------- |
+| `players`  | the 8 tournament participants                                   |
+| `matches`  | the 56 league fixtures + 4 playoff matches                      |
+| `users`    | admin accounts (one per player + a dedicated super-admin), bcrypt-hashed |
 
-1. Push this project to a GitHub repo (Render deploys from Git).
-2. On Render: **New + → Blueprint → select the repo → Apply**.
-3. Wait for the build; open the generated `https://bpl-….onrender.com` URL. Done.
+- On first boot, if the database is empty, the backend seeds players, the schedule and the admin
+  accounts automatically.
+- Every result you save in the Admin panel is written through to MongoDB immediately.
+- To reset everything (or after editing the schedule in `matches.seed.ts`), run `npm run seed` —
+  this wipes and re-seeds all three collections.
 
-Admin login works as usual (`name@bot.com` / `secret` — change `AUTH_PASSWORD` in the Render
-dashboard if you want).
-
-**Free-tier notes (fine for a draft):**
-
-- The service **sleeps after ~15 min idle**; the first request after that cold-starts in ~30s.
-- The free filesystem is **ephemeral** — `bpl-db.json` resets (re-seeds) on each redeploy/restart.
-  To keep results permanently, add a Render **persistent disk** mounted at `backend/data`, or
-  migrate the store to a managed database (see below).
-
-> Prefer drag-and-drop with no Git? You can drop `frontend/dist` (after `npm run build`) onto
-> [Netlify Drop](https://app.netlify.com/drop) for an instant **UI-only** preview — but the
-> dashboard/admin need the API, so the single-service Render deploy above is the way to get a
-> fully working app.
-
-### How single-service mode works
-
-When `CLIENT_DIR` is set (it is, in `render.yaml`), the Express app serves the built frontend from
-that folder plus an SPA fallback for client routes, with the API still under `/api`. Locally the
-two apps run separately on ports 5173/3001; in production they're one. The production frontend build
-uses [`frontend/.env.production`](frontend/.env.production) (`VITE_API_BASE_URL=/api`, i.e.
-same-origin).
-
-## 💾 Data persistence
-
-Data **persists across restarts** via a JSON-file store — no database server required.
-
-- On first run the backend seeds the hardcoded players + schedule and writes them to
-  `backend/data/bpl-db.json` (configurable via `DATA_FILE`).
-- Every result you save in the Admin panel is written through to that file immediately.
-- On subsequent boots it loads the file as-is — your results are kept.
-- To start over (or after editing the schedule in `matches.seed.ts`), run `npm run seed` — or
-  just delete `backend/data/bpl-db.json`.
-
-The file is git-ignored. For ephemeral runs/tests, swap `new JsonFileStore()` for
-`new InMemoryStore()` in [`store.ts`](backend/src/data/store.ts).
-
-## 🛢 Migrating to a database
-
-The JSON-file store is intentionally a stepping stone; the app is structured for an easy DB
-migration:
-
-1. All persistence lives behind the `DataStore` interface in
-   [`backend/src/data/store.ts`](backend/src/data/store.ts).
-2. Implement that same interface with a real driver (PostgreSQL / Prisma, MongoDB / Mongoose, …).
-3. Swap the exported `store` instance for your implementation.
-
-Services, controllers, routes and the entire frontend remain **unchanged** — they depend only on
-the interface, never the in-memory implementation.
+All persistence sits behind the `DataStore` interface in
+[`backend/src/data/store.ts`](backend/src/data/store.ts) (`MongoStore` is the default; an
+`InMemoryStore` is provided for tests). Services, controllers, routes and the frontend depend only
+on that interface.
 
 ---
 
 ## 🛠 Tech notes
 
 - **Independent apps** — no shared package; the frontend mirrors the API types in its own
-  `src/types`. Either app can be deployed on its own.
-- **Environment variables** — backend reads `PORT`, `CORS_ORIGIN`, auth settings; frontend reads
-  `VITE_API_BASE_URL`.
+  `src/types`. Either app can run on its own.
+- **Environment variables** — backend reads `PORT`, `CORS_ORIGIN`, `MONGODB_URI`/`MONGODB_DB` and
+  auth settings; frontend reads `VITE_API_BASE_URL`.
+- **Persistence** — MongoDB via the official `mongodb` driver, behind a `DataStore` interface.
+- **Passwords** — bcrypt-hashed; only seeded accounts can sign in.
 - **Auth tokens** — signed (HMAC-SHA256) and self-expiring; trivial to replace with real JWTs.
 - **Strict TypeScript** everywhere, on both sides.

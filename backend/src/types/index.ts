@@ -124,6 +124,18 @@ export interface AuthUser {
   name: string;
 }
 
+/**
+ * A persisted admin account. Only seeded accounts may log in — there is no
+ * self-registration, and every account has identical admin powers.
+ *
+ * `passwordHash` is a bcrypt hash; the plaintext password is never stored.
+ */
+export interface AdminUser {
+  email: string;
+  name: string;
+  passwordHash: string;
+}
+
 export interface AuthResponse {
   token: string;
   user: AuthUser;

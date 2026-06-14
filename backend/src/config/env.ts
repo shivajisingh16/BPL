@@ -15,19 +15,25 @@ export const env = {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
-  // Where the JSON-file store persists data. Relative paths resolve from the
-  // process working directory (the `backend/` folder when running the scripts).
-  dataFile: process.env.DATA_FILE
-    ? path.resolve(process.env.DATA_FILE)
-    : path.resolve(process.cwd(), 'data', 'bpl-db.json'),
+  // MongoDB Atlas connection. `mongoUri` is required to start the server;
+  // `mongoDbName` selects the database within the cluster.
+  mongoUri: process.env.MONGODB_URI ?? '',
+  mongoDbName: process.env.MONGODB_DB ?? 'bpl',
   // When set (e.g. in production), the API also serves the built frontend from
   // this directory, so the whole app runs as a single service on one URL.
   clientDir: process.env.CLIENT_DIR ? path.resolve(process.env.CLIENT_DIR) : null,
   auth: {
+    // Domain used to derive each player's admin email (e.g. shivaji@bot.com).
     allowedDomain: process.env.AUTH_ALLOWED_DOMAIN ?? 'bot.com',
+    // Shared password seeded for every player-derived admin account.
     password: process.env.AUTH_PASSWORD ?? 'secret',
     tokenSecret: process.env.AUTH_TOKEN_SECRET ?? 'change-me-in-production',
     tokenTtlHours: Number(process.env.AUTH_TOKEN_TTL_HOURS ?? 12),
+    // Dedicated super-admin account, seeded alongside the players.
+    admin: {
+      email: (process.env.ADMIN_EMAIL ?? 'admin@bot.com').trim().toLowerCase(),
+      password: process.env.ADMIN_PASSWORD ?? 'admin',
+    },
   },
 } as const;
 

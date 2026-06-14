@@ -1,15 +1,19 @@
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import { env } from '../config/env';
+import { store } from '../data/store';
 import { AppError } from '../utils/AppError';
 import type { AuthResponse, AuthUser, LoginInput } from '../types';
 
 /**
- * Minimal stateless auth.
+ * Stateless auth against the seeded admin accounts.
  *
  * Rules (per spec):
- *  - Any email of the form `[name]@<AUTH_ALLOWED_DOMAIN>` is an allowed admin.
- *  - The password is a single shared secret (`AUTH_PASSWORD`).
- *  - No registration; password cannot be changed.
+ *  - Only seeded accounts may sign in (one per player by first name, plus the
+ *    dedicated `admin@bot.com`). Anyone not in the `users` collection is
+ *    rejected — there is no self-registration.
+ *  - Passwords are verified against bcrypt hashes stored in the database.
+ *  - Every account has identical admin powers.
  *
  * A signed, self-describing token is issued on login (HMAC-SHA256 over the
  * payload). This avoids a server-side session store and is trivial to swap
@@ -63,30 +67,25 @@ function nowMs(): number {
   return Date.now();
 }
 
-function deriveName(email: string): string {
-  const local = email.split('@')[0] ?? '';
-  if (!local) return 'Admin';
-  return local.charAt(0).toUpperCase() + local.slice(1);
-}
-
 export const authService = {
-  login({ email, password }: LoginInput): AuthResponse {
+  async login({ email, password }: LoginInput): Promise<AuthResponse> {
     const normalisedEmail = String(email ?? '').trim().toLowerCase();
 
     if (!EMAIL_RE.test(normalisedEmail)) {
       throw AppError.badRequest('Please enter a valid email address', 'INVALID_EMAIL');
     }
-    if (!normalisedEmail.endsWith(`@${env.auth.allowedDomain}`)) {
-      throw AppError.unauthorized(
-        `Only @${env.auth.allowedDomain} accounts can sign in`,
-        'DOMAIN_NOT_ALLOWED',
-      );
-    }
-    if (!safeEqual(String(password ?? ''), env.auth.password)) {
-      throw AppError.unauthorized('Incorrect password', 'BAD_CREDENTIALS');
+
+    // Only seeded accounts may sign in. A single generic error for both
+    // "unknown account" and "wrong password" avoids leaking which emails exist.
+    const account = await store.getUserByEmail(normalisedEmail);
+    const passwordOk =
+      account !== undefined &&
+      (await bcrypt.compare(String(password ?? ''), account.passwordHash));
+    if (!account || !passwordOk) {
+      throw AppError.unauthorized('Invalid email or password', 'BAD_CREDENTIALS');
     }
 
-    const user: AuthUser = { email: normalisedEmail, name: deriveName(normalisedEmail) };
+    const user: AuthUser = { email: account.email, name: account.name };
     return { token: issueToken(user), user };
   },
 

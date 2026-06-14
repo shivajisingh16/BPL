@@ -30,9 +30,6 @@ yarn-error.log*
 .vite/
 **/.vite/
 
-# Persisted JSON-file store (runtime data)
-backend/data/
-
 # Misc
 coverage/
 *.tsbuildinfo
