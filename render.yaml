@@ -1,0 +1,34 @@
+# Render.com blueprint — deploys BPL as a single free web service.
+#
+# The backend builds the React frontend and serves it alongside the API, so
+# the whole app runs on ONE URL (no CORS, no separate frontend host).
+#
+# Deploy: push this repo to GitHub, then on render.com →
+#   New + → Blueprint → pick the repo → Apply.
+services:
+  - type: web
+    name: bpl
+    runtime: node
+    plan: free
+    # `--include=dev` ensures build tools (vite, tsc) install even though they
+    # are devDependencies.
+    buildCommand: >-
+      cd frontend && npm install --include=dev && npm run build &&
+      cd ../backend && npm install --include=dev && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Backend (cwd = backend/) serves the built frontend from here.
+      - key: CLIENT_DIR
+        value: ../frontend/dist
+      # Allow the app's own origin (single host → reflect any).
+      - key: CORS_ORIGIN
+        value: "*"
+      # Randomly generated session-token secret.
+      - key: AUTH_TOKEN_SECRET
+        generateValue: true
+      # Admin password (change in the Render dashboard if you like).
+      - key: AUTH_PASSWORD
+        value: secret
+    # PORT is provided by Render automatically and read via process.env.PORT.
